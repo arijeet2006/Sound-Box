@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DroidRun Soundbox</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #121212; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; }
+        .glass-panel { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 20px; }
+        .amount-text { color: #00ff88; font-weight: bold; font-size: 2rem; }
+        
+        .btn-sound { background: #333; color: white; border: 1px solid #555; border-radius: 50px; padding: 10px 20px; }
+        .btn-sound.active { background: #00ff88; color: black; box-shadow: 0 0 15px #00ff88; border: none; }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5 text-center">
+    <h2 class="mb-4">🤖 DroidRun <span class="text-secondary">Soundbox</span></h2>
+
+    <div class="mb-4">
+        <button id="sound-btn" class="btn-sound" onclick="enableSound()">🔈 Enable Sound</button>
+        <button class="btn btn-sm btn-outline-light ms-2" onclick="testVoice()">Test Voice</button>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="glass-panel">
+                <h5 class="text-secondary">Total Collected Today</h5>
+                <h1 class="display-3 text-white" id="display-total">₹ --</h1>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <div class="glass-panel">
+                <h5 class="text-secondary">Latest Payment</h5>
+                <div id="latest-container">
+                    <h1 class="amount-text" id="display-latest">--</h1>
+                    <small class="text-muted" id="display-sender">Waiting for payment...</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let soundEnabled = false;
+    let lastSpokenTime = "";
+
+    function enableSound() {
+        soundEnabled = true;
+        document.getElementById("sound-btn").classList.add("active");
+        document.getElementById("sound-btn").innerText = "🔊 Sound Active";
+        speak("System Online. Ready for payments.");
+
+        setInterval(fetchData, 2000); 
+    }
+
+    function testVoice() {
+        const msg = new SpeechSynthesisUtterance("Hello I am Arijeet. The Developer of this project");
+        window.speechSynthesis.speak(msg);
+    }
+
+    function speak(text) {
+        if (!soundEnabled) return;
+        window.speechSynthesis.cancel();
+        
+        let utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-IN';
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function fetchData() {
+        fetch('/api/live-data/')
+            .then(response => response.json())
+            .then(data => {
+               
+                document.getElementById("display-total").innerText = "₹ " + data.total_amount;
+                document.getElementById("display-latest").innerText = "₹ " + data.latest_amount;
+                document.getElementById("display-sender").innerText = data.latest_sender + " • " + data.latest_timestamp;
+
+                if (data.latest_amount > 0 && data.latest_timestamp !== lastSpokenTime) {
+                    
+                    if (lastSpokenTime !== "") { 
+                        let cleanAmount = data.latest_amount.toString().replace(".00", "");
+                        speak(`Received ${cleanAmount} rupees from ${data.latest_sender}`);
+                    }
+                    
+                    lastSpokenTime = data.latest_timestamp;
+                } else if (lastSpokenTime === "") {
+
+                    lastSpokenTime = data.latest_timestamp;
+                }
+            })
+            .catch(error => console.error("Error fetching data:", error));
+    }
+</script>
+
+</body>
+</html>
